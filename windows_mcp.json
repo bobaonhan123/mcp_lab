@@ -1,0 +1,13 @@
+{
+	"servers": {
+		"Excel mcp": {
+			"type": "stdio",
+			"command": ".\\venv\\Scripts\\python",
+			"args": [
+				"-m",
+				"src.app"
+			]
+		}
+	},
+	"inputs": []
+}
