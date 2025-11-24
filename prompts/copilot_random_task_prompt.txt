@@ -1,0 +1,4 @@
+Generate random task lists and save them to Excel through the MCP server.
+- Create 3 main tasks and 2 support tasks, each numbered "1.", "2.", etc. Keep every task under ten words and vary the content.
+- Call the MCP tool write_task_list(main_tasks=[...], support_tasks=[...], template_path="templates/template.xlsx", output_path="output/tasks.xlsx") to write into the marker cells beneath marker[main_task] and marker[support_task] while preserving formatting.
+- After the tool call, reply with a short confirmation that includes the output path.
