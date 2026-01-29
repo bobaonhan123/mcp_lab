@@ -1,4 +1,4 @@
-"""Code to Excel helper for writing code blocks to Excel files."""
+"""Code to Excel helper for writing code blocks to Excel files with syntax highlighting."""
 
 from __future__ import annotations
 
@@ -19,31 +19,106 @@ try:
 except ImportError:
     HAS_PILLOW = False
 
+# Syntax highlighting with Pygments
+try:
+    from pygments import lex
+    from pygments.lexers import get_lexer_by_name, guess_lexer
+    from pygments.token import Token
+    HAS_PYGMENTS = True
+except ImportError:
+    HAS_PYGMENTS = False
 
-def _apply_code_style(ws, start_row: int, code_block: CodeBlock) -> int:
+
+# Monokai-inspired color scheme for syntax highlighting
+SYNTAX_COLORS = {
+    Token.Keyword: "F92672",           # Pink/Magenta - keywords (def, class, if, etc.)
+    Token.Keyword.Namespace: "F92672",
+    Token.Keyword.Declaration: "66D9EF",  # Cyan - type declarations
+    Token.Name.Function: "A6E22E",     # Green - function names
+    Token.Name.Class: "A6E22E",        # Green - class names
+    Token.Name.Decorator: "A6E22E",    # Green - decorators
+    Token.Name.Builtin: "66D9EF",      # Cyan - builtins (print, len, etc.)
+    Token.String: "E6DB74",            # Yellow - strings
+    Token.String.Doc: "75715E",        # Gray - docstrings
+    Token.Comment: "75715E",           # Gray - comments
+    Token.Comment.Single: "75715E",
+    Token.Number: "AE81FF",            # Purple - numbers
+    Token.Operator: "F92672",          # Pink - operators
+    Token.Punctuation: "F8F8F2",       # White - punctuation
+    Token.Name: "F8F8F2",              # White - names
+}
+
+
+def _get_token_color(token_type) -> str | None:
+    """Get the color for a token type, checking parent types."""
+    while token_type:
+        if token_type in SYNTAX_COLORS:
+            return SYNTAX_COLORS[token_type]
+        token_type = token_type.parent
+    return None
+
+
+def _get_lexer_for_language(language: str):
+    """Get Pygments lexer for a language."""
+    try:
+        return get_lexer_by_name(language)
+    except:
+        return get_lexer_by_name("python")  # Default to Python
+
+
+def _apply_code_style(ws, start_row: int, code_block: CodeBlock, use_dark_theme: bool = True) -> int:
     """Apply styling and write code block to worksheet. Returns next available row."""
-    # Header style
+    # Theme colors
+    if use_dark_theme:
+        bg_color = "272822"  # Monokai dark background
+        header_bg = "1E1F1C"
+        line_num_color = "75715E"
+        default_text_color = "F8F8F2"
+    else:
+        bg_color = "FAFAFA"
+        header_bg = "366092"
+        line_num_color = "888888"
+        default_text_color = "333333"
+    
+    # Styles
     header_font = Font(bold=True, size=11, color="FFFFFF")
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-    code_font = Font(name="Consolas", size=10)
-    line_num_font = Font(name="Consolas", size=10, color="888888")
+    header_fill = PatternFill(start_color=header_bg, end_color=header_bg, fill_type="solid")
+    bg_fill = PatternFill(start_color=bg_color, end_color=bg_color, fill_type="solid")
+    code_font = Font(name="Consolas", size=10, color=default_text_color)
+    line_num_font = Font(name="Consolas", size=10, color=line_num_color)
     border = Border(
-        left=Side(style="thin"),
-        right=Side(style="thin"),
-        top=Side(style="thin"),
-        bottom=Side(style="thin"),
+        left=Side(style="thin", color="444444"),
+        right=Side(style="thin", color="444444"),
+        top=Side(style="thin", color="444444"),
+        bottom=Side(style="thin", color="444444"),
     )
     
     # Write file header
     header_cell = ws.cell(row=start_row, column=1)
-    header_cell.value = f"File: {code_block.file_path} (Lines {code_block.start_line}-{code_block.end_line})"
+    header_cell.value = f"📄 {code_block.file_path} (Lines {code_block.start_line}-{code_block.end_line})"
     header_cell.font = header_font
     header_cell.fill = header_fill
-    ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=3)
+    ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=2)
     
     # Column headers
-    ws.cell(row=start_row + 1, column=1, value="Line").font = Font(bold=True)
-    ws.cell(row=start_row + 1, column=2, value="Code").font = Font(bold=True)
+    col_header_font = Font(bold=True, size=10, color="FFFFFF")
+    col_header_fill = PatternFill(start_color="444444", end_color="444444", fill_type="solid")
+    
+    line_header = ws.cell(row=start_row + 1, column=1, value="Line")
+    line_header.font = col_header_font
+    line_header.fill = col_header_fill
+    line_header.alignment = Alignment(horizontal="center")
+    
+    code_header = ws.cell(row=start_row + 1, column=2, value="Code")
+    code_header.font = col_header_font
+    code_header.fill = col_header_fill
+    code_header.alignment = Alignment(horizontal="left")
+    
+    # Get lexer for syntax highlighting
+    lexer = None
+    if HAS_PYGMENTS:
+        lang = detect_language(code_block.file_path)
+        lexer = _get_lexer_for_language(lang)
     
     # Write code lines
     lines = code_block.code.rstrip("\n").split("\n")
@@ -53,14 +128,30 @@ def _apply_code_style(ws, start_row: int, code_block: CodeBlock) -> int:
         # Line number cell
         line_cell = ws.cell(row=current_row, column=1, value=i)
         line_cell.font = line_num_font
+        line_cell.fill = bg_fill
         line_cell.alignment = Alignment(horizontal="right")
         line_cell.border = border
         
-        # Code cell
+        # Code cell - apply syntax highlighting color for dominant token
         code_cell = ws.cell(row=current_row, column=2, value=line)
-        code_cell.font = code_font
+        code_cell.fill = bg_fill
         code_cell.alignment = Alignment(horizontal="left")
         code_cell.border = border
+        
+        # Determine line color based on content
+        font_color = default_text_color
+        if HAS_PYGMENTS and lexer and line.strip():
+            # Get tokens for this line
+            tokens = list(lex(line + "\n", lexer))
+            # Find the most significant token for coloring the line
+            for token_type, token_value in tokens:
+                if token_value.strip():  # Skip whitespace
+                    color = _get_token_color(token_type)
+                    if color:
+                        font_color = color
+                        break
+        
+        code_cell.font = Font(name="Consolas", size=10, color=font_color)
         
         current_row += 1
     

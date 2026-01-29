@@ -21,6 +21,16 @@ from ..helpers.code_excel import (
     write_code_and_diagram_to_excel,
     capture_and_write_to_excel,
 )
+from ..helpers.code_ast import (
+    analyze_python_file,
+    capture_function,
+    capture_class,
+    capture_method,
+    capture_all_functions,
+    capture_all_classes,
+    capture_by_names,
+    get_file_summary,
+)
 
 
 # BASE_DIR = Path(__file__).resolve().parents[2]
@@ -633,3 +643,182 @@ def document_code_with_diagram_prompt(
             ),
         },
     ]
+
+
+# =============================================================================
+# AST-based Code Analysis Tools (Auto-detection)
+# =============================================================================
+
+
+@server.tool(name="analyze_python_file")
+def analyze_python_file_tool(file_path: str) -> str:
+    """Analyze a Python file and list all functions/classes with their line ranges.
+    
+    Automatically detects:
+    - Functions (with decorators and docstrings)
+    - Classes (with methods)
+    - Async functions/methods
+    
+    Args:
+        file_path: Path to the Python file
+        
+    Returns:
+        Summary of all code elements with line ranges
+    """
+    try:
+        return get_file_summary(file_path)
+    except Exception as e:
+        return f"Error analyzing file: {str(e)}"
+
+
+@server.tool(name="capture_function")
+def capture_function_tool(
+    file_path: str,
+    function_name: str,
+) -> str:
+    """Capture a function by name - automatically finds the line range.
+    
+    No need to specify line numbers! Just provide the function name.
+    
+    Args:
+        file_path: Path to the Python file
+        function_name: Name of the function to capture
+        
+    Returns:
+        Formatted code block with the function
+    """
+    try:
+        block = capture_function(file_path, function_name)
+        return format_code_block(block, include_line_numbers=True)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+@server.tool(name="capture_class")
+def capture_class_tool(
+    file_path: str,
+    class_name: str,
+) -> str:
+    """Capture a class by name - automatically finds the line range.
+    
+    Captures the entire class including all methods.
+    
+    Args:
+        file_path: Path to the Python file
+        class_name: Name of the class to capture
+        
+    Returns:
+        Formatted code block with the class
+    """
+    try:
+        block = capture_class(file_path, class_name)
+        return format_code_block(block, include_line_numbers=True)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+@server.tool(name="capture_method")
+def capture_method_tool(
+    file_path: str,
+    class_name: str,
+    method_name: str,
+) -> str:
+    """Capture a method by class and method name.
+    
+    Args:
+        file_path: Path to the Python file
+        class_name: Name of the class containing the method
+        method_name: Name of the method to capture
+        
+    Returns:
+        Formatted code block with the method
+    """
+    try:
+        block = capture_method(file_path, class_name, method_name)
+        return format_code_block(block, include_line_numbers=True)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+@server.tool(name="capture_by_names")
+def capture_by_names_tool(
+    file_path: str,
+    names: list[str],
+) -> str:
+    """Capture multiple functions/classes by their names.
+    
+    Automatically finds line ranges for each named element.
+    
+    Args:
+        file_path: Path to the Python file
+        names: List of function or class names to capture
+        
+    Returns:
+        Formatted documentation with all captured blocks
+    """
+    try:
+        blocks = capture_by_names(file_path, names)
+        return create_code_documentation(blocks, title=f"Code from {file_path}")
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+@server.tool(name="capture_all_functions")
+def capture_all_functions_tool(
+    file_path: str,
+    include_methods: bool = False,
+) -> str:
+    """Capture all functions from a Python file.
+    
+    Args:
+        file_path: Path to the Python file
+        include_methods: Whether to also include class methods
+        
+    Returns:
+        Formatted documentation with all functions
+    """
+    try:
+        blocks = capture_all_functions(file_path, include_methods=include_methods)
+        return create_code_documentation(blocks, title=f"All Functions from {file_path}")
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+# =============================================================================
+# AST-based Prompts
+# =============================================================================
+
+
+@server.prompt(name="auto_capture_code")
+def auto_capture_code_prompt(
+    file_path: str,
+    element_names: str = "",
+):
+    """Prompt that uses AST to automatically capture code by function/class names."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert code documenter with AST-based auto-detection capabilities.\n\n"
+                "Available tools:\n"
+                "- `analyze_python_file`: List all functions/classes with line ranges\n"
+                "- `capture_function`: Capture function by name (auto-finds lines)\n"
+                "- `capture_class`: Capture class by name (auto-finds lines)\n"
+                "- `capture_by_names`: Capture multiple elements by names\n"
+                "- `capture_all_functions`: Capture all functions in a file\n\n"
+                "No need to manually specify line numbers - the tools find them automatically!"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"File: {file_path}\n"
+                + (f"Elements to capture: {element_names}\n\n" if element_names else "\n")
+                + "Please:\n"
+                "1. First use `analyze_python_file` to see all available elements\n"
+                "2. Use `capture_function` or `capture_by_names` to capture specific elements\n"
+                "3. Explain what each captured element does"
+            ),
+        },
+    ]
+

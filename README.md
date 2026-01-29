@@ -71,6 +71,32 @@ This starts the FastMCP server defined in `src/app/app.py`.
     - Sheet 1 "Code Blocks": Captured code with line numbers
     - Sheet 2 "Sequence Diagram": PlantUML code and rendered diagram image
 
+### AST-Based Code Capture Tools (Python)
+These tools use Python's AST module to **automatically detect** functions, classes, and methods - no manual line numbers needed!
+
+- **`analyze_python_file(file_path)`**
+  - Analyzes a Python file and returns all code elements (functions, classes, methods)
+  - Each element includes: name, type, start/end lines, docstring, decorators
+  
+- **`capture_function(file_path, function_name)`**
+  - Captures a function by name with automatic line detection
+  - Returns formatted code with line numbers and syntax highlighting
+  
+- **`capture_class(file_path, class_name, include_methods?)`**
+  - Captures a class by name, optionally including all its methods
+  - Default: includes methods
+  
+- **`capture_method(file_path, class_name, method_name)`**
+  - Captures a specific method from a class
+  
+- **`capture_by_names(file_path, names)`**
+  - Captures multiple elements by name in a single call
+  - Supports mixed functions and classes
+  
+- **`capture_all_functions(file_path, include_classes?)`**
+  - Captures ALL functions (and optionally classes) in a file
+  - Great for comprehensive documentation
+
 ## MCP Prompts
 
 ### Task Prompts
@@ -101,6 +127,11 @@ This starts the FastMCP server defined in `src/app/app.py`.
   - Parameters: `file_path`, `diagram_description` (optional)
   - Sheet 1: Code blocks with line numbers
   - Sheet 2: PlantUML sequence diagram with rendered image
+
+### AST Code Capture Prompts
+- **`auto_capture_code`** - Automatically analyzes and captures code elements by name.
+  - Parameters: `file_path`, `element_names` (optional comma-separated)
+  - Uses AST to detect functions/classes without line numbers
 
 ## Using with GitHub Copilot / MCP client
 1. Start the PlantUML server: `docker run -d -p 8080:8080 plantuml/plantuml-server:jetty`
@@ -139,4 +170,17 @@ AI: Identifies all tools and prompts, captures relevant sections, explains the a
 ```
 User: Use draw_plantuml to create a sequence diagram showing how code capture works
 AI: Generates PlantUML diagram and saves it to Excel
+```
+
+### AST-based code capture (NEW!)
+```
+User: Capture the detect_language function from src/helpers/code.py
+AI: Uses capture_function tool - no line numbers needed!
+    Returns formatted code with automatic line detection
+```
+
+```
+User: Analyze src/helpers/code.py and capture all functions
+AI: Uses analyze_python_file to get file summary, then capture_all_functions
+    Creates comprehensive documentation of all code elements
 ```
