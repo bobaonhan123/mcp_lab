@@ -1,0 +1,38 @@
+Generate a PlantUML diagram and save it to Excel through the MCP server.
+
+Instructions:
+1. Create a PlantUML diagram based on the user's description or requirements.
+2. Use proper PlantUML syntax with @startuml and @enduml tags.
+3. The diagram should be clear, well-organized, and follow PlantUML best practices.
+
+Supported diagram types:
+- Sequence diagrams: Use `->`, `-->`, `->>` for messages between participants
+- Class diagrams: Use `class`, `interface`, relationships like `--|>`, `--*`, `--o`
+- Use case diagrams: Use `actor`, `usecase`, `-->`
+- Activity diagrams: Use `start`, `stop`, `:action;`, `if-then-else`
+- Component diagrams: Use `component`, `interface`, `-->`
+- State diagrams: Use `[*]`, `state`, `-->`
+- Deployment diagrams: Use `node`, `artifact`, `-->`
+
+After creating the PlantUML code:
+- Call the MCP tool `write_plantuml_to_excel` with:
+  - puml_code: The complete PlantUML code
+  - template_path: "templates/plantuml_template.xlsx" (or specified path)
+  - output_path: "output/plantuml_diagram.xlsx" (or specified path)
+  - server_url: "http://localhost:8080" (PlantUML server URL)
+
+Example PlantUML code:
+```plantuml
+@startuml
+actor User
+participant "Web App" as App
+database "Database" as DB
+
+User -> App: Request data
+App -> DB: Query
+DB --> App: Results
+App --> User: Display data
+@enduml
+```
+
+After the tool call, confirm the output path and describe what diagram was created.

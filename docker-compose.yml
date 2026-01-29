@@ -1,0 +1,9 @@
+services:
+  plantuml-server:
+    image: plantuml/plantuml-server:jetty
+    container_name: plantuml-server
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - PLANTUML_LIMIT_SIZE=8192
