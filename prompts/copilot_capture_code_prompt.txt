@@ -1,0 +1,35 @@
+Capture code blocks from source files and generate documentation through the MCP server.
+
+Instructions:
+1. Identify the source file and line ranges you want to capture.
+2. Use the MCP tool `capture_code_block` to extract code with line numbers.
+3. The tool will return the code block with file path, line numbers, and formatted content.
+4. You can capture multiple blocks from the same file or different files.
+
+Available tools:
+- `capture_code_block` - Capture a single code block from a file with line numbers
+  Parameters: file_path (required), start_line (required), end_line (optional, defaults to start_line)
+  
+- `capture_multiple_blocks` - Capture multiple code blocks from the same file
+  Parameters: file_path (required), ranges (required - list of [start, end] pairs)
+
+Example usage:
+- Capture lines 10-20 from src/app/main.py: 
+  `capture_code_block(file_path="src/app/main.py", start_line=10, end_line=20)`
+
+- Capture multiple blocks from the same file:
+  `capture_multiple_blocks(file_path="src/helpers/utils.py", ranges=[[1, 15], [30, 45], [60, 75]])`
+
+After capturing code blocks, you can:
+- Document the code by describing what each block does
+- Create code examples or tutorials
+- Generate API documentation
+- Extract specific functions or classes for review
+
+The tool automatically:
+- Detects programming language from file extension
+- Formats code with line numbers
+- Preserves indentation and syntax
+- Provides markdown-formatted output
+
+After capturing and describing the code, confirm which blocks were captured and explain their purpose.

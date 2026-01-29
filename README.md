@@ -50,6 +50,27 @@ This starts the FastMCP server defined in `src/app/app.py`.
 - **`generate_plantuml_png(puml_code, output_path?, server_url?)`**
   - Generates a PlantUML diagram as a standalone PNG file
 
+### Code Capture Tools
+- **`capture_code_block(file_path, start_line, end_line?)`**
+  - Captures a code block from a source file with line numbers (1-indexed)
+  - Returns formatted code with file path, line numbers, and syntax highlighting
+  - `end_line` is optional; if omitted, captures single line
+  
+- **`capture_multiple_blocks(file_path, ranges)`**
+  - Captures multiple code blocks from the same file
+  - `ranges`: List of [start_line, end_line] pairs (1-indexed)
+  - Returns formatted documentation with all captured blocks
+
+### Code to Excel Tools
+- **`write_code_to_excel(file_path, ranges, output_path?, title?)`**
+  - Captures code blocks and writes to Excel with formatted line numbers
+  - Creates a single sheet with all code blocks
+  
+- **`write_code_and_diagram_to_excel(file_path, ranges, puml_code, output_path?, server_url?)`**
+  - Creates Excel with **2 sheets**:
+    - Sheet 1 "Code Blocks": Captured code with line numbers
+    - Sheet 2 "Sequence Diagram": PlantUML code and rendered diagram image
+
 ## MCP Prompts
 
 ### Task Prompts
@@ -61,6 +82,25 @@ This starts the FastMCP server defined in `src/app/app.py`.
   
 - **`plantuml_from_code`** - Asks the model to analyze source code and generate a PlantUML diagram.
   - Parameters: `source_code`, `diagram_type`
+
+### Code Capture Prompts
+- **`capture_code`** - Asks the model to capture and document code blocks from a file.
+  - Parameters: `file_path`, `description` (optional)
+  - Extracts relevant code sections with line numbers
+  
+- **`analyze_code_structure`** - Asks the model to analyze the overall code structure and architecture.
+  - Parameters: `file_path`
+  - Identifies components, relationships, and design patterns
+
+### Code to Excel Prompts
+- **`capture_code_to_excel`** - Captures code blocks and saves to Excel file.
+  - Parameters: `file_path`, `description` (optional)
+  - Creates formatted Excel with line numbers
+  
+- **`document_code_with_diagram`** - Creates Excel with code blocks AND sequence diagram (2 sheets).
+  - Parameters: `file_path`, `diagram_description` (optional)
+  - Sheet 1: Code blocks with line numbers
+  - Sheet 2: PlantUML sequence diagram with rendered image
 
 ## Using with GitHub Copilot / MCP client
 1. Start the PlantUML server: `docker run -d -p 8080:8080 plantuml/plantuml-server:jetty`
@@ -78,3 +118,25 @@ This starts the FastMCP server defined in `src/app/app.py`.
 ## Prompt Files
 - `prompts/copilot_random_task_prompt.txt` - Ready-to-paste task generation prompt
 - `prompts/copilot_plantuml_prompt.txt` - Ready-to-paste PlantUML diagram generation prompt
+- `prompts/copilot_capture_code_prompt.txt` - Ready-to-paste code capture prompt
+- `prompts/copilot_document_with_diagram_prompt.txt` - Ready-to-paste code + diagram to Excel prompt
+
+## Examples
+
+### Capturing a code block
+```
+User: Use the capture_code prompt on src/helpers/code.py to document the capture_code_block function
+AI: Captures lines with the function definition and explains its purpose
+```
+
+### Analyzing code structure
+```
+User: Use analyze_code_structure prompt on src/app/app.py
+AI: Identifies all tools and prompts, captures relevant sections, explains the architecture
+```
+
+### Creating diagrams
+```
+User: Use draw_plantuml to create a sequence diagram showing how code capture works
+AI: Generates PlantUML diagram and saves it to Excel
+```

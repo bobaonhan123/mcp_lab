@@ -1,0 +1,42 @@
+Document code with sequence diagram and save to Excel through the MCP server.
+
+This prompt creates an Excel file with 2 sheets:
+- Sheet 1 "Code Blocks": Captured code with line numbers
+- Sheet 2 "Sequence Diagram": PlantUML code and rendered diagram image
+
+Instructions:
+1. Specify the source file you want to document
+2. The AI will analyze the code and identify important sections
+3. A sequence diagram will be created showing the code flow
+4. Everything is saved to a single Excel file
+
+Example usage:
+"Document the code in src/helpers/code.py and create a sequence diagram showing how code capture works"
+
+The tool will:
+1. Identify key functions (e.g., capture_code_block, format_code_block)
+2. Capture those functions with their line numbers
+3. Create a PlantUML sequence diagram like:
+
+@startuml
+participant Client
+participant "capture_code_block" as Capture
+participant "Path" as Path
+participant "File" as File
+
+Client -> Capture: capture_code_block(file_path, start, end)
+Capture -> Path: Create Path object
+Capture -> Path: Check exists()
+Path --> Capture: True/False
+Capture -> File: open() and readlines()
+File --> Capture: lines[]
+Capture -> Capture: Extract lines[start:end]
+Capture --> Client: CodeBlock(path, start, end, code)
+@enduml
+
+4. Save to Excel with both code blocks and the diagram
+
+After the tool call, confirm:
+- Which code sections were captured (with line numbers)
+- What the sequence diagram shows
+- The output file path
