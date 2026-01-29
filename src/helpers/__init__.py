@@ -29,6 +29,22 @@ from .code_ast import (
     get_file_summary,
     CodeElement,
 )
+from .diff import (
+    compute_diff,
+    write_diff_to_excel,
+    format_diff_text,
+    DiffBlock,
+    DiffLine,
+)
+from .search import (
+    search_in_folder,
+    write_search_to_excel,
+    format_search_results,
+    SearchMatch,
+    SearchResult,
+    SearchSummary,
+)
+from .combined_excel import write_combined_excel
 
 __all__ = [
     "write_task_lists_to_excel",
@@ -53,5 +69,18 @@ __all__ = [
     "capture_by_names",
     "get_file_summary",
     "CodeElement",
+    # Diff
+    "compute_diff",
+    "write_diff_to_excel",
+    "format_diff_text",
+    "DiffBlock",
+    "DiffLine",
+    # Search
+    "search_in_folder",
+    "write_search_to_excel",
+    "format_search_results",
+    "SearchMatch",
+    "SearchResult",
+    "SearchSummary",
 ]
 

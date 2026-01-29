@@ -31,6 +31,17 @@ from ..helpers.code_ast import (
     capture_by_names,
     get_file_summary,
 )
+from ..helpers.diff import (
+    compute_diff,
+    write_diff_to_excel,
+    format_diff_text,
+)
+from ..helpers.search import (
+    search_in_folder,
+    write_search_to_excel,
+    format_search_results,
+)
+from ..helpers.combined_excel import write_combined_excel
 
 
 # BASE_DIR = Path(__file__).resolve().parents[2]
@@ -821,4 +832,330 @@ def auto_capture_code_prompt(
             ),
         },
     ]
+
+
+# =============================================================================
+# Diff Tools
+# =============================================================================
+
+
+@server.tool(name="write_diff_to_excel")
+def write_diff_to_excel_tool(
+    old_code: str,
+    new_code: str,
+    output_path: str | None = None,
+    old_label: str = "Old Code",
+    new_label: str = "New Code",
+    file_path: str | None = None,
+) -> str:
+    """Write a code diff to Excel with old/new comparison.
+    
+    Creates an Excel file with 3 sheets:
+    - Sheet 1 "Old Code": Original code with line numbers
+    - Sheet 2 "New Code": Modified code with line numbers  
+    - Sheet 3 "Diff View": Unified diff with + (added) and - (removed) markers
+    
+    Args:
+        old_code: Original/old version of the code
+        new_code: New/modified version of the code
+        output_path: Path for output Excel file (default: output/diff.xlsx)
+        old_label: Label for old code sheet
+        new_label: Label for new code sheet
+        file_path: Optional file path to show in header
+        
+    Returns:
+        Confirmation message with output path
+    """
+    try:
+        output = Path(output_path) if output_path else settings.BASE_DIR / "output" / "diff.xlsx"
+        saved_path = write_diff_to_excel(
+            old_code=old_code,
+            new_code=new_code,
+            output_path=output,
+            old_label=old_label,
+            new_label=new_label,
+            file_path=file_path,
+        )
+        return f"Successfully wrote diff to {saved_path}"
+    except Exception as e:
+        return f"Error writing diff: {str(e)}"
+
+
+@server.tool(name="compare_code")
+def compare_code_tool(
+    old_code: str,
+    new_code: str,
+) -> str:
+    """Compare two code snippets and show the diff as text.
+    
+    Args:
+        old_code: Original code
+        new_code: New/modified code
+        
+    Returns:
+        Unified diff text showing changes
+    """
+    try:
+        return format_diff_text(old_code, new_code)
+    except Exception as e:
+        return f"Error comparing code: {str(e)}"
+
+
+# =============================================================================
+# Search Tools
+# =============================================================================
+
+
+@server.tool(name="search_in_folder")
+def search_in_folder_tool(
+    folder_path: str,
+    query: str,
+    is_regex: bool = False,
+    case_sensitive: bool = False,
+    file_extensions: list[str] | None = None,
+    context_lines: int = 2,
+    max_results: int = 100,
+) -> str:
+    """Search for a pattern in all files in a folder (like Ctrl+Shift+F).
+    
+    Args:
+        folder_path: Path to the folder to search
+        query: Search query (string or regex pattern)
+        is_regex: Whether query is a regex pattern
+        case_sensitive: Whether search is case-sensitive
+        file_extensions: List of extensions to include (e.g., [".py", ".js"])
+        context_lines: Number of context lines before/after match
+        max_results: Maximum number of matches to return
+        
+    Returns:
+        Formatted search results with matches and context
+    """
+    try:
+        extensions = set(file_extensions) if file_extensions else None
+        summary = search_in_folder(
+            folder_path=folder_path,
+            query=query,
+            is_regex=is_regex,
+            case_sensitive=case_sensitive,
+            include_extensions=extensions,
+            context_lines=context_lines,
+            max_results=max_results,
+        )
+        return format_search_results(summary, show_context=True)
+    except Exception as e:
+        return f"Error searching: {str(e)}"
+
+
+@server.tool(name="write_search_to_excel")
+def write_search_to_excel_tool(
+    folder_path: str,
+    query: str,
+    output_path: str | None = None,
+    is_regex: bool = False,
+    case_sensitive: bool = False,
+    file_extensions: list[str] | None = None,
+    include_context: bool = True,
+    max_results: int = 500,
+) -> str:
+    """Search in folder and write results to Excel.
+    
+    Creates an Excel file with 2 sheets:
+    - Sheet 1 "Summary": Overview with query info and file list
+    - Sheet 2 "All Matches": All matches with file, line, content, and context
+    
+    Args:
+        folder_path: Path to the folder to search
+        query: Search query (string or regex pattern)
+        output_path: Path for output Excel file (default: output/search_results.xlsx)
+        is_regex: Whether query is a regex pattern
+        case_sensitive: Whether search is case-sensitive
+        file_extensions: List of extensions to include
+        include_context: Whether to include context lines
+        max_results: Maximum number of matches
+        
+    Returns:
+        Confirmation message with output path
+    """
+    try:
+        output = Path(output_path) if output_path else settings.BASE_DIR / "output" / "search_results.xlsx"
+        extensions = set(file_extensions) if file_extensions else None
+        
+        summary = search_in_folder(
+            folder_path=folder_path,
+            query=query,
+            is_regex=is_regex,
+            case_sensitive=case_sensitive,
+            include_extensions=extensions,
+            max_results=max_results,
+        )
+        
+        saved_path = write_search_to_excel(
+            summary=summary,
+            output_path=output,
+            include_context=include_context,
+        )
+        
+        return f"Found {summary.total_matches} matches in {summary.files_with_matches} files. Saved to {saved_path}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+# =============================================================================
+# Diff & Search Prompts
+# =============================================================================
+
+
+@server.prompt(name="compare_code_versions")
+def compare_code_versions_prompt(
+    description: str = "Compare old and new code versions",
+):
+    """Prompt to compare two code versions and write diff to Excel."""
+    output = str(settings.BASE_DIR / "output" / "diff.xlsx")
+    
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert at comparing code versions and explaining changes.\n\n"
+                "Available tools:\n"
+                "- `compare_code`: Show diff as text\n"
+                "- `write_diff_to_excel`: Write diff to Excel with 3 sheets (Old, New, Diff View)\n\n"
+                "The diff view uses colors: green for added lines, red for removed lines."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Task: {description}\n\n"
+                "Please provide the old and new code, then:\n"
+                "1. Use `compare_code` to show what changed\n"
+                "2. Use `write_diff_to_excel` to save the comparison\n"
+                f"   - output_path: '{output}'\n"
+                "3. Explain the key changes"
+            ),
+        },
+    ]
+
+
+@server.prompt(name="search_codebase")
+def search_codebase_prompt(
+    folder_path: str,
+    query: str = "",
+):
+    """Prompt to search for patterns in codebase."""
+    output = str(settings.BASE_DIR / "output" / "search_results.xlsx")
+    
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert at searching codebases and finding relevant code.\n\n"
+                "Available tools:\n"
+                "- `search_in_folder`: Search and return results as text\n"
+                "- `write_search_to_excel`: Search and save results to Excel\n\n"
+                "Tips:\n"
+                "- Use is_regex=True for pattern matching (e.g., 'def .*test')\n"
+                "- Use file_extensions to filter by file type\n"
+                "- Results include context lines for easier understanding"
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Folder: {folder_path}\n"
+                + (f"Search for: {query}\n\n" if query else "\n")
+                + "Please:\n"
+                "1. Use `search_in_folder` to find matches\n"
+                "2. Use `write_search_to_excel` to save results\n"
+                f"   - output_path: '{output}'\n"
+                "3. Summarize what was found"
+            ),
+        },
+    ]
+
+
+# =============================================================================
+# Combined Excel Tool (All-in-One)
+# =============================================================================
+
+
+@server.tool(name="write_combined_excel")
+def write_combined_excel_tool(
+    output_path: str | None = None,
+    # Code capture
+    code_file_path: str | None = None,
+    code_ranges: list[list[int]] | None = None,
+    # Diff
+    diff_old_code: str | None = None,
+    diff_new_code: str | None = None,
+    diff_file_path: str | None = None,
+    # Search
+    search_folder: str | None = None,
+    search_query: str | None = None,
+    search_regex: bool = False,
+    # Diagram
+    puml_code: str | None = None,
+) -> str:
+    """Create a combined Excel file with multiple sheets: Code, Diff, Search, Diagram.
+    
+    All parameters are optional - only sheets for provided data will be created.
+    
+    Args:
+        output_path: Path for output Excel file (default: output/combined.xlsx)
+        code_file_path: Source file for code capture
+        code_ranges: Line ranges [[start, end], ...] for code capture
+        diff_old_code: Old code for diff comparison
+        diff_new_code: New code for diff comparison
+        diff_file_path: File path for diff header
+        search_folder: Folder to search in
+        search_query: Search query string
+        search_regex: Whether search query is regex
+        puml_code: PlantUML diagram code
+        
+    Returns:
+        Confirmation with output path and sheets created
+    """
+    try:
+        output = Path(output_path) if output_path else settings.BASE_DIR / "output" / "combined.xlsx"
+        
+        # Prepare data
+        code_blocks = None
+        if code_file_path and code_ranges:
+            range_tuples = [(r[0], r[1] if len(r) > 1 else r[0]) for r in code_ranges]
+            code_blocks = capture_multiple_blocks(code_file_path, range_tuples)
+        
+        search_summary = None
+        if search_folder and search_query:
+            search_summary = search_in_folder(
+                folder_path=search_folder,
+                query=search_query,
+                is_regex=search_regex,
+                max_results=100,
+            )
+        
+        # Create combined Excel
+        saved_path = write_combined_excel(
+            output_path=output,
+            code_blocks=code_blocks,
+            diff_old=diff_old_code,
+            diff_new=diff_new_code,
+            diff_file_path=diff_file_path,
+            search_summary=search_summary,
+            puml_code=puml_code,
+        )
+        
+        # Build summary
+        sheets = []
+        if code_blocks:
+            sheets.append(f"Code ({len(code_blocks)} blocks)")
+        if diff_old_code and diff_new_code:
+            sheets.append("Diff")
+        if search_summary:
+            sheets.append(f"Search ({search_summary.total_matches} matches)")
+        if puml_code:
+            sheets.append("Diagram")
+        
+        return f"Created {saved_path} with sheets: {', '.join(sheets)}"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
